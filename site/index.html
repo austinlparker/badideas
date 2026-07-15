@@ -6,7 +6,7 @@
   Welcome to the loader. The page you are trying to visit is a PHP script.
   Before it can run, your browser must:
 
-    1. download an 84MB MySQL server        (compiled from Go to WASM)
+    1. download MySQL 5.7's embedded server (compiled from C/C++ to WASM)
     2. boot it
     3. download a mysqldump file from github.io
     4. replay it into the server, one statement at a time
@@ -50,33 +50,53 @@ console.log(`%c
 
 let php = null;
 let phpSource = null;
+let mysql = null;
 const outputChunks = [];
 
+async function ensureCrossOriginIsolation() {
+  if (globalThis.crossOriginIsolated) {
+    sessionStorage.removeItem('coi-reload');
+    return;
+  }
+  if (!('serviceWorker' in navigator)) {
+    throw new Error('MySQL Wasm needs cross-origin isolation for pthreads, but this browser has no service workers');
+  }
+  if (sessionStorage.getItem('coi-reload') === '1') {
+    throw new Error('The page reloaded but is still not cross-origin isolated (COOP/COEP headers are missing)');
+  }
+
+  say('installing the COOP/COEP service worker required by WebAssembly pthreads');
+  await navigator.serviceWorker.register('./coi-serviceworker.js');
+  await navigator.serviceWorker.ready;
+  sessionStorage.setItem('coi-reload', '1');
+  location.reload();
+  await new Promise(() => {});
+}
+
 async function main() {
-  phase('booting mysqld (84MB)...');
-  say('fetching wasm_exec.js (the Go runtime shim)');
-  await new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'wasm_exec.js';
-    s.onload = res;
-    s.onerror = () => rej(new Error('failed to load wasm_exec.js'));
-    document.head.appendChild(s);
+  await ensureCrossOriginIsolation();
+
+  phase('booting MySQL 5.7.44 in WebAssembly...');
+  say('importing Oracle MySQL 5.7.44\'s embedded server library, compiled from C/C++ with Emscripten');
+  const { default: createMysqlModule } = await import('./mysql-wasm/mysql.mjs');
+  const mysqlBase = new URL('./mysql-wasm/', location.href);
+  mysql = await createMysqlModule({
+    locateFile: name => new URL(name, mysqlBase).href,
+    print: message => console.log('[mysql stdout]', message),
+    printErr: message => console.error('[mysql stderr]', message),
   });
 
-  say('downloading mysqld.wasm — an entire MySQL-compatible server. yes, all of it.');
-  const resp = await fetch('mysqld.wasm');
-  if (!resp.ok) throw new Error(`mysqld.wasm: HTTP ${resp.status}`);
-  // WebAssembly.instantiateStreaming exists, works, and would be faster.
-  // We buffer the whole thing first. TTFCP doesn't pad itself.
-  const bytes = await resp.arrayBuffer();
-  say(`downloaded ${(bytes.byteLength / 1048576).toFixed(1)}MB of database server`);
-
-  say('compiling and instantiating mysqld...');
-  const go = new Go();
-  const { instance } = await WebAssembly.instantiate(bytes, go.importObject);
-  go.run(instance); // resolves never; the server must keep running
-  while (!globalThis.mysqldReady) await sleep(50);
-  say('mysqld is up. it is listening on nothing, in your RAM.');
+  const initMysql = mysql.cwrap('mysql_wasm_init', 'string', []);
+  const queryMysql = mysql.cwrap('mysql_wasm_query', 'string', ['string']);
+  const initResult = initMysql();
+  if (initResult) {
+    let detail = initResult;
+    try { detail = JSON.parse(initResult).error || detail; } catch (_) {}
+    throw new Error('MySQL initialization failed: ' + detail);
+  }
+  globalThis.mysqlQuery = queryMysql;
+  globalThis.mysqldReady = true;
+  say('MySQL is up. This is libmysqld, so it has no TCP socket and lives only in this tab\'s memory.');
 
   phase('replaying database dump...');
   say('pulling prebuilt dump from ' + new URL('dump.sql', location.href).href

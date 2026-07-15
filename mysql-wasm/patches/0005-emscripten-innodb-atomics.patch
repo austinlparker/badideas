@@ -1,0 +1,19 @@
+diff --git a/storage/innobase/innodb.cmake b/storage/innobase/innodb.cmake
+index 5f2a946..37bda20 100644
+--- a/storage/innobase/innodb.cmake
++++ b/storage/innobase/innodb.cmake
+@@ -133,6 +133,14 @@ ENDIF()
+ 
+ IF(NOT MSVC)
+ # either define HAVE_IB_GCC_ATOMIC_BUILTINS or not
++IF(EMSCRIPTEN)
++  # Emscripten supports these builtins, but the runtime checks below cannot
++  # execute while CMake is cross-compiling.
++  SET(HAVE_IB_GCC_SYNC_SYNCHRONISE 1)
++  SET(HAVE_IB_GCC_ATOMIC_THREAD_FENCE 1)
++  SET(HAVE_IB_GCC_ATOMIC_COMPARE_EXCHANGE 1)
++  SET(HAVE_IB_ATOMIC_PTHREAD_T_GCC 1)
++ENDIF()
+ IF(NOT CMAKE_CROSSCOMPILING)
+   CHECK_C_SOURCE_RUNS(
+   "#include<stdint.h>

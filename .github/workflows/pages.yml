@@ -20,16 +20,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Compile a MySQL server for the browser (this step is real)
-        run: ./mysqld-wasm/build.sh
+      - uses: actions/cache@v4
+        with:
+          path: .cache/badideas-mysql-wasm
+          key: mysql-wasm-${{ runner.os }}-${{ hashFiles('mysql-wasm/**') }}
+
+      - name: Verify the checked-in database dump
+        run: |
+          python3 tools/generate_dump.py
+          git diff --exit-code -- site/dump.sql
+
+      - name: Compile Oracle MySQL 5.7's embedded server for the browser
+        run: ./mysql-wasm/build.sh
 
       - name: Vendor a PHP interpreter for the browser (so is this one)
         run: ./tools/vendor-php-wasm.sh

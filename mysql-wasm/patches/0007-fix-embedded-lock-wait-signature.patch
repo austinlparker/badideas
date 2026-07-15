@@ -1,0 +1,16 @@
+diff --git a/sql/sql_class.cc b/sql/sql_class.cc
+index 2c54ef8..b6bc5de 100644
+--- a/sql/sql_class.cc
++++ b/sql/sql_class.cc
+@@ -4052,8 +4052,10 @@ void thd_report_row_lock_wait(THD* self, THD *wait_for)
+ }
+ #else
+ extern "C"
+-void thd_report_row_lock_wait(THD *thd_wait_for)
++void thd_report_row_lock_wait(THD *self, THD *wait_for)
+ {
++  (void) self;
++  (void) wait_for;
+   return;
+ }
+ #endif

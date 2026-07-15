@@ -32,7 +32,7 @@ MESSAGES = [
     "greetings from the year 2003, we finally got here",
     "my computer fan turned on and I knew the database was starting",
     "still faster than our Jira instance",
-    "84 megabytes of WebAssembly? in this economy?",
+    "an entire MySQL server engine in WebAssembly? in this economy?",
     "waited 4 minutes for first paint. the paint was worth it",
     "does this site work on WAP? asking for my Nokia",
     "I viewed source and I am calling the police",
@@ -57,7 +57,7 @@ HANDCRAFTED = [
 POSTS = [
     ("Announcing: This Website",
      "This site is a PHP application. The PHP runs in your browser via WebAssembly. "
-     "It connects to a MySQL-compatible server, which also runs in your browser via WebAssembly. "
+     "It connects to Oracle MySQL 5.7's embedded server library, which also runs in your browser via WebAssembly. "
      "The data you are reading was replayed from a SQL dump fetched over HTTP, one statement at a time, "
      "before anything was allowed to appear on screen. There is no backend. There has never been a backend. "
      "You are the backend."),
@@ -67,7 +67,7 @@ POSTS = [
      "unearned. We have restored the anticipation. The progress is in the developer console, "
      "where all honest progress lives."),
     ("Architecture Deep Dive",
-     "Your browser downloads an 84MB MySQL server compiled from Go, boots it, replays a mysqldump file into it, "
+     "Your browser downloads Oracle MySQL 5.7's embedded C/C++ server compiled with Emscripten, boots it, replays a mysqldump file into it, "
      "then downloads a PHP interpreter compiled to WASM, runs index.php, and PHP queries MySQL through a "
      "JavaScript bridge one synchronous call at a time. Every layer of this was avoidable. That is what makes it art."),
     ("FAQ",
@@ -91,12 +91,12 @@ def main() -> None:
     lines = []
     w = lines.append
 
-    w("-- MySQL dump 10.13  Distrib 8.0.31, for wasm32-unknown-unknown (browser tab)")
+    w("-- MySQL dump 10.13  Distrib 5.7.44, for wasm32-unknown-unknown (browser tab)")
     w("--")
     w("-- Host: localhost    Database: badideas")
     w("-- ------------------------------------------------------")
-    w("-- Server version\t8.0.31")
-    w("-- Warning: this dump is executed by a client. In a client. There is no server.")
+    w("-- Server version\t5.7.44")
+    w("-- Warning: this dump is executed by a client, into an embedded server, in a client. There is no remote server.")
     w("")
     w("CREATE DATABASE badideas;")
     w("USE badideas;")
@@ -104,7 +104,7 @@ def main() -> None:
     w("--")
     w("-- Table structure for table `site_config`")
     w("--")
-    w("CREATE TABLE site_config (name VARCHAR(64) PRIMARY KEY, value TEXT NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;")
+    w("CREATE TABLE site_config (name VARCHAR(64) PRIMARY KEY, value TEXT NOT NULL) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;")
     w("INSERT INTO site_config VALUES ('site_title', 'austin''s BAD IDEAS zone');")
     w("INSERT INTO site_config VALUES ('tagline', 'PHP + MySQL + your browser''s RAM: pick three');")
     w("INSERT INTO site_config VALUES ('marquee', 'WELCOME to the ONLY website where the LAMP stack runs entirely inside the L... wait');")
@@ -113,20 +113,20 @@ def main() -> None:
     w("--")
     w("-- Table structure for table `hit_counter`")
     w("--")
-    w("CREATE TABLE hit_counter (id INT PRIMARY KEY, hits BIGINT NOT NULL) ENGINE=InnoDB;")
+    w("CREATE TABLE hit_counter (id INT PRIMARY KEY, hits BIGINT NOT NULL) ENGINE=MyISAM;")
     w("INSERT INTO hit_counter VALUES (1, 1336);")
     w("")
     w("--")
     w("-- Table structure for table `posts`")
     w("--")
-    w("CREATE TABLE posts (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(255) NOT NULL, body TEXT NOT NULL, created_at DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;")
+    w("CREATE TABLE posts (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(255) NOT NULL, body TEXT NOT NULL, created_at DATETIME NOT NULL) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;")
     for i, (title, body) in enumerate(POSTS):
         w(f"INSERT INTO posts (title, body, created_at) VALUES ('{esc(title)}', '{esc(body)}', '2026-07-{15 - i:02d} 0{i + 1}:23:00');")
     w("")
     w("--")
     w("-- Table structure for table `guestbook`")
     w("--")
-    w("CREATE TABLE guestbook (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(128) NOT NULL, message TEXT NOT NULL, created_at DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;")
+    w("CREATE TABLE guestbook (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(128) NOT NULL, message TEXT NOT NULL, created_at DATETIME NOT NULL) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;")
 
     entries = []
     for name, msg in HANDCRAFTED:

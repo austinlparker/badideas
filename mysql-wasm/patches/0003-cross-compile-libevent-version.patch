@@ -1,0 +1,19 @@
+diff --git a/cmake/libevent.cmake b/cmake/libevent.cmake
+index ee1d412..32b59b7 100644
+--- a/cmake/libevent.cmake
++++ b/cmake/libevent.cmake
+@@ -119,7 +119,13 @@ MACRO (MYSQL_CHECK_LIBEVENT)
+   ELSE()
+     MESSAGE(FATAL_ERROR "WITH_LIBEVENT must be bundled or system")
+   ENDIF()
+-  FIND_LIBEVENT_VERSION()
++  IF(EMSCRIPTEN AND WITH_LIBEVENT STREQUAL "bundled")
++    # TRY_RUN cannot reliably capture stdout from a pthread-enabled Wasm
++    # probe. This is the version vendored directly above.
++    SET(LIBEVENT_VERSION "2.1.11")
++  ELSE()
++    FIND_LIBEVENT_VERSION()
++  ENDIF()
+   IF(LIBEVENT_VERSION VERSION_LESS MIN_LIBEVENT_VERSION_REQUIRED)
+     MESSAGE(FATAL_ERROR
+       "LIBEVENT version must be at least ${MIN_LIBEVENT_VERSION_REQUIRED}, "
