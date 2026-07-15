@@ -5,5 +5,6 @@ FROM emscripten/emsdk:3.1.64@sha256:8847dad4171ebc8a53d9ae5cda86a2546ef5b2e68834
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
        bison \
+       libncurses-dev \
        libssl-dev \
     && rm -rf /var/lib/apt/lists/*
