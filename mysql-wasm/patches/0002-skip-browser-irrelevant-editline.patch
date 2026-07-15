@@ -1,0 +1,15 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b89d117..a33d789 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -601,7 +601,9 @@ MYSQL_CHECK_ZLIB()
+ # Add openssl.
+ MYSQL_CHECK_SSL()
+ # Add system/bundled editline.
+-MYSQL_CHECK_EDITLINE()
++IF(NOT EMSCRIPTEN)
++  MYSQL_CHECK_EDITLINE()
++ENDIF()
+ # Add libevent
+ MYSQL_CHECK_LIBEVENT()
+ # Add lz4 library

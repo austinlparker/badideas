@@ -1,0 +1,36 @@
+diff --git a/config.h.cmake b/config.h.cmake
+index e2c4796..fdc22f1 100644
+--- a/config.h.cmake
++++ b/config.h.cmake
+@@ -169,6 +169,7 @@
+ #cmakedefine HAVE_ISINF 1
+ 
+ #cmakedefine HAVE_KQUEUE_TIMERS 1
++#cmakedefine HAVE_EMSCRIPTEN_TIMERS 1
+ #cmakedefine HAVE_POSIX_TIMERS 1
+ 
+ /* Endianess */
+diff --git a/mysys/emscripten_timers.c b/mysys/emscripten_timers.c
+index dbd47f1..ced2aa8 100644
+--- a/mysys/emscripten_timers.c
++++ b/mysys/emscripten_timers.c
+@@ -5,6 +5,7 @@
+    so these objects only need to be valid, cancellable placeholders. */
+ 
+ #include "my_global.h"
++#include "my_thread.h"
+ #include "my_timer.h"
+ 
+ #include <errno.h>
+diff --git a/client/get_password.c b/client/get_password.c
+index 03151fe..d652b81 100644
+--- a/client/get_password.c
++++ b/client/get_password.c
+@@ -25,6 +25,7 @@
+ ** This is an own file to avoid conflicts with curses
+ */
+ #include <my_global.h>
++#include <ctype.h>
+ #include <my_sys.h>
+ #include "mysql.h"
+ #include <m_string.h>

@@ -4,7 +4,7 @@
  *
  * This file is served to your browser as plain text, then executed BY your
  * browser, inside a PHP interpreter compiled to WebAssembly. It connects to
- * a MySQL server that is also running inside your browser. If you are
+ * MySQL's embedded server library, also running inside your browser. If you are
  * reading this via View Source: yes, really. No, we won't apologize.
  */
 
@@ -16,8 +16,8 @@ date_default_timezone_set('UTC');
 if (!class_exists('WasmMysqlConnection')) {
 
 /**
- * The world's worst database driver. Speaks to mysqld.wasm through the
- * vrzno PHP<->JS bridge, one synchronous JSON-serialized call at a time.
+ * The world's worst database driver. Speaks to libmysqld compiled to WASM
+ * through the vrzno PHP<->JS bridge, one synchronous JSON call at a time.
  * mysqli walked so this could crawl.
  */
 class WasmMysqlConnection

@@ -1,9 +1,9 @@
--- MySQL dump 10.13  Distrib 8.0.31, for wasm32-unknown-unknown (browser tab)
+-- MySQL dump 10.13  Distrib 5.7.44, for wasm32-unknown-unknown (browser tab)
 --
 -- Host: localhost    Database: badideas
 -- ------------------------------------------------------
--- Server version	8.0.31
--- Warning: this dump is executed by a client. In a client. There is no server.
+-- Server version	5.7.44
+-- Warning: this dump is executed by a client, into an embedded server, in a client. There is no remote server.
 
 CREATE DATABASE badideas;
 USE badideas;
@@ -11,7 +11,7 @@ USE badideas;
 --
 -- Table structure for table `site_config`
 --
-CREATE TABLE site_config (name VARCHAR(64) PRIMARY KEY, value TEXT NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE site_config (name VARCHAR(64) PRIMARY KEY, value TEXT NOT NULL) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
 INSERT INTO site_config VALUES ('site_title', 'austin''s BAD IDEAS zone');
 INSERT INTO site_config VALUES ('tagline', 'PHP + MySQL + your browser''s RAM: pick three');
 INSERT INTO site_config VALUES ('marquee', 'WELCOME to the ONLY website where the LAMP stack runs entirely inside the L... wait');
@@ -20,23 +20,23 @@ INSERT INTO site_config VALUES ('webmaster_email', 'webmaster@localhost (literal
 --
 -- Table structure for table `hit_counter`
 --
-CREATE TABLE hit_counter (id INT PRIMARY KEY, hits BIGINT NOT NULL) ENGINE=InnoDB;
+CREATE TABLE hit_counter (id INT PRIMARY KEY, hits BIGINT NOT NULL) ENGINE=MyISAM;
 INSERT INTO hit_counter VALUES (1, 1336);
 
 --
 -- Table structure for table `posts`
 --
-CREATE TABLE posts (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(255) NOT NULL, body TEXT NOT NULL, created_at DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-INSERT INTO posts (title, body, created_at) VALUES ('Announcing: This Website', 'This site is a PHP application. The PHP runs in your browser via WebAssembly. It connects to a MySQL-compatible server, which also runs in your browser via WebAssembly. The data you are reading was replayed from a SQL dump fetched over HTTP, one statement at a time, before anything was allowed to appear on screen. There is no backend. There has never been a backend. You are the backend.', '2026-07-15 01:23:00');
+CREATE TABLE posts (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(255) NOT NULL, body TEXT NOT NULL, created_at DATETIME NOT NULL) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
+INSERT INTO posts (title, body, created_at) VALUES ('Announcing: This Website', 'This site is a PHP application. The PHP runs in your browser via WebAssembly. It connects to Oracle MySQL 5.7''s embedded server library, which also runs in your browser via WebAssembly. The data you are reading was replayed from a SQL dump fetched over HTTP, one statement at a time, before anything was allowed to appear on screen. There is no backend. There has never been a backend. You are the backend.', '2026-07-15 01:23:00');
 INSERT INTO posts (title, body, created_at) VALUES ('Why We Measure Time To First Contentful Paint In Minutes', 'Seconds are for cowards. When this page finally paints, you feel something. Modern web performance culture optimizes for the absence of experience -- the page is simply there, unearned. We have restored the anticipation. The progress is in the developer console, where all honest progress lives.', '2026-07-14 02:23:00');
-INSERT INTO posts (title, body, created_at) VALUES ('Architecture Deep Dive', 'Your browser downloads an 84MB MySQL server compiled from Go, boots it, replays a mysqldump file into it, then downloads a PHP interpreter compiled to WASM, runs index.php, and PHP queries MySQL through a JavaScript bridge one synchronous call at a time. Every layer of this was avoidable. That is what makes it art.', '2026-07-13 03:23:00');
+INSERT INTO posts (title, body, created_at) VALUES ('Architecture Deep Dive', 'Your browser downloads Oracle MySQL 5.7''s embedded C/C++ server compiled with Emscripten, boots it, replays a mysqldump file into it, then downloads a PHP interpreter compiled to WASM, runs index.php, and PHP queries MySQL through a JavaScript bridge one synchronous call at a time. Every layer of this was avoidable. That is what makes it art.', '2026-07-13 03:23:00');
 INSERT INTO posts (title, body, created_at) VALUES ('FAQ', 'Q: Why? A: The request was clear. Q: Is it fast? A: The hit counter increments in O(1). Q: Does it scale? A: Every visitor brings their own database server, so yes -- infinitely. This is the most horizontally scaled MySQL deployment in history. Q: Is my guestbook entry saved? A: It is saved to a database that ceases to exist when you close the tab. Like a sandcastle. Q: Can I use this in production? A: You are in production right now.', '2026-07-12 04:23:00');
 INSERT INTO posts (title, body, created_at) VALUES ('Performance Update', 'We profiled the site. The flame graph is just one very wide bar. We considered a loading spinner but rejected it: a spinner implies apology, and we regret nothing. We did add HTTP caching headers, which GitHub Pages provides for free, so the second visit is merely slow.', '2026-07-11 05:23:00');
 
 --
 -- Table structure for table `guestbook`
 --
-CREATE TABLE guestbook (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(128) NOT NULL, message TEXT NOT NULL, created_at DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE guestbook (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(128) NOT NULL, message TEXT NOT NULL, created_at DATETIME NOT NULL) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
 INSERT INTO guestbook (name, message, created_at) VALUES ('ICQ_Angel_Xx', 'best viewed at 800x600 in a browser with 16GB of RAM', '2026-06-01 00:00:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('NapsterTheGreat', 'TTFB was great, shame about the other letters', '2026-06-24 13:53:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('QuakeWizard', 'how did you get the counter to work?? plz email me the cgi', '2026-06-19 02:46:00');
@@ -55,7 +55,7 @@ INSERT INTO guestbook (name, message, created_at) VALUES ('xX_DarkHacker', 'TTFB
 INSERT INTO guestbook (name, message, created_at) VALUES ('xX_Dark_Angel_Xx', 'the hit counter incremented, so the database writes work. incredible', '2026-06-10 03:15:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('WebMasterFan', 'TTFB was great, shame about the other letters', '2026-06-05 16:08:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('AOL2000', 'TTFB was great, shame about the other letters', '2026-06-28 05:01:00');
-INSERT INTO guestbook (name, message, created_at) VALUES ('Y2KRider', '84 megabytes of WebAssembly? in this economy?', '2026-06-23 18:54:00');
+INSERT INTO guestbook (name, message, created_at) VALUES ('Y2KRider', 'an entire MySQL server engine in WebAssembly? in this economy?', '2026-06-23 18:54:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('xX_Dark_2003', 'TTFB was great, shame about the other letters', '2026-06-18 07:47:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('QuakeX', 'best viewed at 800x600 in a browser with 16GB of RAM', '2026-06-13 20:40:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('Quake_Angel_Xx', 'you should add a splash page so it loads slower', '2026-06-08 09:33:00');
@@ -67,9 +67,9 @@ INSERT INTO guestbook (name, message, created_at) VALUES ('your ISP', 'we notice
 INSERT INTO guestbook (name, message, created_at) VALUES ('NetSurfer_2003', 'the hit counter incremented, so the database writes work. incredible', '2026-06-06 15:51:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('CounterZilla', 'my computer fan turned on and I knew the database was starting', '2026-06-01 04:44:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('Rasmus', 'I said PHP would run anywhere. this is not what I meant. it counts though.', '2026-06-24 17:37:00');
-INSERT INTO guestbook (name, message, created_at) VALUES ('Flash4life', '84 megabytes of WebAssembly? in this economy?', '2026-06-19 06:30:00');
+INSERT INTO guestbook (name, message, created_at) VALUES ('Flash4life', 'an entire MySQL server engine in WebAssembly? in this economy?', '2026-06-19 06:30:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('PentiumMaster', 'best viewed at 800x600 in a browser with 16GB of RAM', '2026-06-14 19:23:00');
-INSERT INTO guestbook (name, message, created_at) VALUES ('Winamp4life', '84 megabytes of WebAssembly? in this economy?', '2026-06-09 08:16:00');
+INSERT INTO guestbook (name, message, created_at) VALUES ('Winamp4life', 'an entire MySQL server engine in WebAssembly? in this economy?', '2026-06-09 08:16:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('NapsterZilla', 'you should add a splash page so it loads slower', '2026-06-04 21:09:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('Java_2003', 'Lighthouse gave this site a score and then filed a restraining order', '2026-06-27 10:02:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('CounterWizard', 'I have been waiting for this page to load since breakfast. Worth it.', '2026-06-22 23:55:00');
@@ -87,7 +87,7 @@ INSERT INTO guestbook (name, message, created_at) VALUES ('Pentium_Angel_Xx', 'm
 INSERT INTO guestbook (name, message, created_at) VALUES ('Quake_2003', 'signed the guestbook, now sign mine!!', '2026-06-18 11:31:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('TrillianDawg', 'this page loaded faster than my dial-up, and my dial-up is broken', '2026-06-13 00:24:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('xX_DarkBoi_99', 'best viewed at 800x600 in a browser with 16GB of RAM', '2026-06-08 13:17:00');
-INSERT INTO guestbook (name, message, created_at) VALUES ('NetSurferWizard', '84 megabytes of WebAssembly? in this economy?', '2026-06-03 02:10:00');
+INSERT INTO guestbook (name, message, created_at) VALUES ('NetSurferWizard', 'an entire MySQL server engine in WebAssembly? in this economy?', '2026-06-03 02:10:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('PentiumX', 'Lighthouse gave this site a score and then filed a restraining order', '2026-06-26 15:03:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('AngelfireDawg', 'greetings from the year 2003, we finally got here', '2026-06-21 04:56:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('AngelfireBoi_99', 'PHP in the browser?? what will they think of next, CSS?', '2026-06-16 17:49:00');
@@ -96,10 +96,10 @@ INSERT INTO guestbook (name, message, created_at) VALUES ('Geo4life', 'does this
 INSERT INTO guestbook (name, message, created_at) VALUES ('Sk8erRider', 'how did you get the counter to work?? plz email me the cgi', '2026-06-01 08:28:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('TrillianRider', 'signed the guestbook, now sign mine!!', '2026-06-24 21:21:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('AOL2000', 'waited 4 minutes for first paint. the paint was worth it', '2026-06-19 10:14:00');
-INSERT INTO guestbook (name, message, created_at) VALUES ('Java2000', '84 megabytes of WebAssembly? in this economy?', '2026-06-14 23:07:00');
+INSERT INTO guestbook (name, message, created_at) VALUES ('Java2000', 'an entire MySQL server engine in WebAssembly? in this economy?', '2026-06-14 23:07:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('mobile user on 3G', 'I will let you know how the site is when it finishes loading. reply expected 2027.', '2026-06-09 12:00:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('TrillianRider', 'the hit counter incremented, so the database writes work. incredible', '2026-06-04 01:53:00');
-INSERT INTO guestbook (name, message, created_at) VALUES ('Counter4life', '84 megabytes of WebAssembly? in this economy?', '2026-06-27 14:46:00');
+INSERT INTO guestbook (name, message, created_at) VALUES ('Counter4life', 'an entire MySQL server engine in WebAssembly? in this economy?', '2026-06-27 14:46:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('AOLOnFire', 'signed the guestbook, now sign mine!!', '2026-06-22 03:39:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('NapsterJr', 'I viewed source and I am calling the police', '2026-06-17 16:32:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('FlashHacker', 'waited 4 minutes for first paint. the paint was worth it', '2026-06-12 05:25:00');
@@ -152,7 +152,7 @@ INSERT INTO guestbook (name, message, created_at) VALUES ('Sk8er2000', 'this pag
 INSERT INTO guestbook (name, message, created_at) VALUES ('NapsterDawg', 'best viewed at 800x600 in a browser with 16GB of RAM', '2026-06-01 16:56:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('xX_DarkOnFire', 'TTFB was great, shame about the other letters', '2026-06-24 05:49:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('CounterMaster', 'my computer fan turned on and I knew the database was starting', '2026-06-19 18:42:00');
-INSERT INTO guestbook (name, message, created_at) VALUES ('WebMasterOnFire', '84 megabytes of WebAssembly? in this economy?', '2026-06-14 07:35:00');
+INSERT INTO guestbook (name, message, created_at) VALUES ('WebMasterOnFire', 'an entire MySQL server engine in WebAssembly? in this economy?', '2026-06-14 07:35:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('Y2KWizard', 'still faster than our Jira instance', '2026-06-09 20:28:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('GeoKid', 'does this site work on WAP? asking for my Nokia', '2026-06-04 09:21:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('ICQOnFire', 'waited 4 minutes for first paint. the paint was worth it', '2026-06-27 22:14:00');
@@ -225,13 +225,13 @@ INSERT INTO guestbook (name, message, created_at) VALUES ('Pentium2000', 'TTFB w
 INSERT INTO guestbook (name, message, created_at) VALUES ('NapsterX', 'does this site work on WAP? asking for my Nokia', '2026-06-28 05:25:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('ModemJr', 'your site crashed netscape but in a good way', '2026-06-23 18:18:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('AngelfireBoi_99', 'the hit counter incremented, so the database writes work. incredible', '2026-06-18 07:11:00');
-INSERT INTO guestbook (name, message, created_at) VALUES ('GeoWizard', '84 megabytes of WebAssembly? in this economy?', '2026-06-13 20:04:00');
+INSERT INTO guestbook (name, message, created_at) VALUES ('GeoWizard', 'an entire MySQL server engine in WebAssembly? in this economy?', '2026-06-13 20:04:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('AOL4life', 'this page loaded faster than my dial-up, and my dial-up is broken', '2026-06-08 09:57:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('NetSurfer4life', 'I viewed source and I am calling the police', '2026-06-03 22:50:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('NapsterBoi_99', 'does this site work on WAP? asking for my Nokia', '2026-06-26 11:43:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('Winamp4life', 'does this site work on WAP? asking for my Nokia', '2026-06-21 00:36:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('CounterJr', 'this page loaded faster than my dial-up, and my dial-up is broken', '2026-06-16 13:29:00');
-INSERT INTO guestbook (name, message, created_at) VALUES ('ICQFan', '84 megabytes of WebAssembly? in this economy?', '2026-06-11 02:22:00');
+INSERT INTO guestbook (name, message, created_at) VALUES ('ICQFan', 'an entire MySQL server engine in WebAssembly? in this economy?', '2026-06-11 02:22:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('PentiumOnFire', 'I have been waiting for this page to load since breakfast. Worth it.', '2026-06-06 15:15:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('Y2KJunkie', 'your site crashed netscape but in a good way', '2026-06-01 04:08:00');
 INSERT INTO guestbook (name, message, created_at) VALUES ('Geo4life', 'still faster than our Jira instance', '2026-06-24 17:01:00');

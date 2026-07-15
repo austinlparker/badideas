@@ -1,0 +1,113 @@
+diff --git a/configure.cmake b/configure.cmake
+index 6f6dc2f..e4428d4 100644
+--- a/configure.cmake
++++ b/configure.cmake
+@@ -394,7 +394,9 @@ ELSE()
+   SET(HAVE_ISINF 0 CACHE INTERNAL "isinf visible in C and C++" FORCE)
+ ENDIF()
+ 
+-
++IF(EMSCRIPTEN)
++  SET(HAVE_EMSCRIPTEN_TIMERS 1 CACHE INTERNAL "Have browser-compatible timer stubs")
++ELSE()
+ # The results of these four checks are only needed here, not in code.
+ CHECK_FUNCTION_EXISTS (timer_create HAVE_TIMER_CREATE)
+ CHECK_FUNCTION_EXISTS (timer_settime HAVE_TIMER_SETTIME)
+@@ -410,6 +412,7 @@ ENDIF()
+ IF(NOT HAVE_POSIX_TIMERS AND NOT HAVE_KQUEUE_TIMERS AND NOT WIN32)
+   MESSAGE(FATAL_ERROR "No mysys timer support detected!")
+ ENDIF()
++ENDIF()
+ 
+ #
+ # Test for endianess
+diff --git a/include/my_timer.h b/include/my_timer.h
+index 12b2b83..619e850 100644
+--- a/include/my_timer.h
++++ b/include/my_timer.h
+@@ -34,6 +34,9 @@
+ #elif HAVE_KQUEUE_TIMERS
+ # include <sys/types.h> /* uintptr_t */
+   typedef uintptr_t os_timer_t;
++#elif defined(HAVE_EMSCRIPTEN_TIMERS)
++# include <stdint.h>
++  typedef uintptr_t os_timer_t;
+ #elif _WIN32
+   typedef struct st_os_timer
+   {
+diff --git a/mysys/CMakeLists.txt b/mysys/CMakeLists.txt
+index 97cdd79..5829acb 100644
+--- a/mysys/CMakeLists.txt
++++ b/mysys/CMakeLists.txt
+@@ -58,6 +58,10 @@ IF(HAVE_KQUEUE_TIMERS)
+   SET(MYSYS_SOURCES ${MYSYS_SOURCES} kqueue_timers.c)
+ ENDIF()
+ 
++IF(HAVE_EMSCRIPTEN_TIMERS)
++  SET(MYSYS_SOURCES ${MYSYS_SOURCES} emscripten_timers.c)
++ENDIF()
++
+ IF(CMAKE_SYSTEM_NAME MATCHES "SunOS" AND CMAKE_C_COMPILER_ID MATCHES "SunPro")
+   # Inline assembly template for rdtsc
+   SET_SOURCE_FILES_PROPERTIES(my_rdtsc.c
+diff --git a/mysys/emscripten_timers.c b/mysys/emscripten_timers.c
+new file mode 100644
+index 0000000..dbd47f1
+--- /dev/null
++++ b/mysys/emscripten_timers.c
+@@ -0,0 +1,55 @@
++/* Browser-safe timer implementation for the MySQL 5.7 embedded server.
++
++   MySQL's statement timeout facility expects kernel POSIX or kqueue timers.
++   Browsers provide neither. The website never configures statement timeouts,
++   so these objects only need to be valid, cancellable placeholders. */
++
++#include "my_global.h"
++#include "my_timer.h"
++
++#include <errno.h>
++
++int my_timer_initialize(void)
++{
++  return 0;
++}
++
++void my_timer_deinitialize(void)
++{
++}
++
++int my_timer_create(my_timer_t *timer)
++{
++  if (timer == NULL)
++  {
++    errno= EINVAL;
++    return -1;
++  }
++
++  timer->id= 0;
++  return 0;
++}
++
++int my_timer_set(my_timer_t *timer, unsigned long time)
++{
++  (void)timer;
++  (void)time;
++
++  /* Statement execution timeouts are intentionally unsupported. */
++  errno= ENOTSUP;
++  return -1;
++}
++
++int my_timer_cancel(my_timer_t *timer, int *state)
++{
++  (void)timer;
++  if (state != NULL)
++    *state= 1;
++  return 0;
++}
++
++void my_timer_delete(my_timer_t *timer)
++{
++  if (timer != NULL)
++    timer->id= 0;
++}

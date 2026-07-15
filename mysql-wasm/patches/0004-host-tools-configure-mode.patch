@@ -1,0 +1,31 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a33d789..ae9cf65 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -601,11 +601,13 @@ MYSQL_CHECK_ZLIB()
+ # Add openssl.
+ MYSQL_CHECK_SSL()
+ # Add system/bundled editline.
+-IF(NOT EMSCRIPTEN)
++IF(NOT EMSCRIPTEN AND NOT BADIDEAS_HOST_TOOLS_ONLY)
+   MYSQL_CHECK_EDITLINE()
+ ENDIF()
+ # Add libevent
+-MYSQL_CHECK_LIBEVENT()
++IF(NOT BADIDEAS_HOST_TOOLS_ONLY)
++  MYSQL_CHECK_LIBEVENT()
++ENDIF()
+ # Add lz4 library
+ MYSQL_CHECK_LZ4()
+ # Add SASL library
+@@ -721,7 +723,9 @@ IF(NOT WITHOUT_SERVER)
+   CONFIGURE_PLUGINS()
+ ELSE()
+   # We may still want Cluster client libraries, use -DWITH_NDBCLUSTER=1
+-  ADD_SUBDIRECTORY(storage/ndb)
++  IF(NOT BADIDEAS_HOST_TOOLS_ONLY)
++    ADD_SUBDIRECTORY(storage/ndb)
++  ENDIF()
+ ENDIF()
+ 
+ IF(WITH_UNIT_TESTS)

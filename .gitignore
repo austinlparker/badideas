@@ -1,13 +1,10 @@
-# Built in CI by mysqld-wasm/build.sh — 84MB of database server does not
-# belong in git history, only in your browser's memory.
-site/mysqld.wasm
-site/wasm_exec.js
+# Built in CI by mysql-wasm/build.sh. MySQL itself still does not belong in
+# git history, only in your browser's memory.
+site/mysql-wasm/
+.cache/
 
 # Vendored in CI by tools/vendor-php-wasm.sh
 site/php-wasm/
-
-# Go vendor dir (recreated + patched by build.sh on every build)
-mysqld-wasm/vendor/
 
 node_modules/
 package-lock.json
