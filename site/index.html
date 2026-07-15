@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!--
+  Welcome to the loader. The page you are trying to visit is a PHP script.
+  Before it can run, your browser must:
+
+    1. download an 84MB MySQL server        (compiled from Go to WASM)
+    2. boot it
+    3. download a mysqldump file from github.io
+    4. replay it into the server, one statement at a time
+    5. download a PHP interpreter           (compiled from C to WASM)
+    6. boot that too
+    7. download index.php as plain text
+    8. execute it, letting PHP query MySQL over a JavaScript bridge
+    9. finally, paint
+
+  Nothing is parallelized. Nothing is streamed. Nothing is cached beyond what
+  GitHub Pages insists on. Progress is reported to the developer console,
+  where all honest progress lives. The screen stays blank because a loading
+  spinner would imply apology, and we regret nothing.
+
+  Time To First Contentful Paint is measured in minutes, as requested.
+-->
+<title>connecting to database...</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💾</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<noscript>This website requires JavaScript to run PHP. Read that again.</noscript>
+<script type="module">
+const t0 = Date.now();
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const stamp = () => ((Date.now() - t0) / 1000).toFixed(1).padStart(7) + 's';
+const say = msg => console.log(`%c[${stamp()}]%c ${msg}`, 'color:#0f0;background:#000', '');
+const phase = msg => { document.title = msg; say(msg.toUpperCase()); };
+
+window.__elapsedSeconds = () => ((Date.now() - t0) / 1000).toFixed(1);
+
+console.log(`%c
+  ██████╗  █████╗ ██████╗     ██╗██████╗ ███████╗ █████╗ ███████╗
+  ██╔══██╗██╔══██╗██╔══██╗    ██║██╔══██╗██╔════╝██╔══██╗██╔════╝
+  ██████╔╝███████║██║  ██║    ██║██║  ██║█████╗  ███████║███████╗
+  ██╔══██╗██╔══██║██║  ██║    ██║██║  ██║██╔══╝  ██╔══██║╚════██║
+  ██████╔╝██║  ██║██████╔╝    ██║██████╔╝███████╗██║  ██║███████║
+  ╚═════╝ ╚═╝  ╚═╝╚═════╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚══════╝
+  PHP (wasm) -> MySQL (wasm) -> a dump from github.io -> your RAM
+`, 'color:#f0f');
+
+let php = null;
+let phpSource = null;
+const outputChunks = [];
+
+async function main() {
+  phase('booting mysqld (84MB)...');
+  say('fetching wasm_exec.js (the Go runtime shim)');
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'wasm_exec.js';
+    s.onload = res;
+    s.onerror = () => rej(new Error('failed to load wasm_exec.js'));
+    document.head.appendChild(s);
+  });
+
+  say('downloading mysqld.wasm — an entire MySQL-compatible server. yes, all of it.');
+  const resp = await fetch('mysqld.wasm');
+  if (!resp.ok) throw new Error(`mysqld.wasm: HTTP ${resp.status}`);
+  // WebAssembly.instantiateStreaming exists, works, and would be faster.
+  // We buffer the whole thing first. TTFCP doesn't pad itself.
+  const bytes = await resp.arrayBuffer();
+  say(`downloaded ${(bytes.byteLength / 1048576).toFixed(1)}MB of database server`);
+
+  say('compiling and instantiating mysqld...');
+  const go = new Go();
+  const { instance } = await WebAssembly.instantiate(bytes, go.importObject);
+  go.run(instance); // resolves never; the server must keep running
+  while (!globalThis.mysqldReady) await sleep(50);
+  say('mysqld is up. it is listening on nothing, in your RAM.');
+
+  phase('replaying database dump...');
+  say('pulling prebuilt dump from ' + new URL('dump.sql', location.href).href
+      + (location.hostname.endsWith('github.io') ? ' (authentic github.io provenance)' : ' (locally — imagine it is github.io)'));
+  const dumpResp = await fetch('dump.sql');
+  if (!dumpResp.ok) throw new Error(`dump.sql: HTTP ${dumpResp.status}`);
+  const dump = await dumpResp.text();
+
+  const statements = dump.split(/;\s*\r?\n/)
+    .map(chunk => chunk.split('\n').filter(l => !l.trim().startsWith('--')).join('\n').trim())
+    .filter(s => s.length > 0);
+
+  say(`replaying ${statements.length} SQL statements, one at a time, like it's a ceremony`);
+  for (let i = 0; i < statements.length; i++) {
+    const res = JSON.parse(globalThis.mysqlQuery(statements[i]));
+    if (res.error) throw new Error(`dump replay failed at statement ${i + 1}: ${res.error}\n${statements[i]}`);
+    if ((i + 1) % 25 === 0) say(`  ${i + 1}/${statements.length} statements replayed`);
+    await sleep(0); // yield to the event loop out of politeness, and slowness
+  }
+  say('dump replayed. the database now exists. it will die when you close the tab.');
+
+  phase('booting PHP interpreter...');
+  say('importing php-wasm (a PHP interpreter, for your browser, which already had JavaScript)');
+  const { PhpWeb } = await import('./php-wasm/PhpWeb.mjs');
+  php = new PhpWeb();
+  php.addEventListener('output', e => outputChunks.push(...e.detail));
+  php.addEventListener('error', e => console.error('[php stderr]', e.detail.join('')));
+  await php.binary;
+  say('PHP is up. two runtimes and a database are now sharing one browser tab.');
+
+  say('fetching index.php as plain text, the way no webserver would ever allow');
+  const phpResp = await fetch('index.php');
+  if (!phpResp.ok) throw new Error(`index.php: HTTP ${phpResp.status}`);
+  phpSource = await phpResp.text();
+
+  phase('executing index.php...');
+  await renderPhp();
+  document.title = "austin's BAD IDEAS zone";
+  phase(`first contentful paint at ${stamp().trim()} — a new record (either direction)`);
+  document.title = "austin's BAD IDEAS zone";
+}
+
+async function renderPhp() {
+  outputChunks.length = 0;
+  const exitCode = await php.run(phpSource);
+  await sleep(100); // let trailing output flush
+  if (!outputChunks.length) throw new Error(`PHP produced no output (exit code ${exitCode})`);
+  document.body.innerHTML = outputChunks.join('');
+}
+
+// The guestbook form re-runs the entire PHP script. Server-side rendering,
+// client-side, on demand.
+window.__signGuestbook = function (form) {
+  const esc = s => s.replace(/\\/g, '\\\\').replace(/'/g, "''").replace(/[\r\n;]/g, ' ');
+  const name = esc(form.name.value.trim() || 'anonymous coward');
+  const message = esc(form.message.value.trim());
+  if (!message) { alert('a guestbook entry with no message is just a hit counter'); return false; }
+  const res = JSON.parse(globalThis.mysqlQuery(
+    `INSERT INTO guestbook (name, message, created_at) VALUES ('${name}', '${message}', NOW())`
+  ));
+  if (res.error) { alert('MySQL error: ' + res.error); return false; }
+  say('guestbook INSERT committed to a database inside your browser. re-running PHP...');
+  renderPhp().catch(fail);
+  return false;
+};
+
+function fail(err) {
+  console.error(err);
+  document.body.innerHTML =
+    '<div style="font-family:monospace;padding:2em"><h1>500 Internal Browser Error</h1>' +
+    '<p>The website that runs entirely in your browser has crashed, entirely in your browser.</p>' +
+    '<pre>' + String(err && err.message || err).replace(/</g, '&lt;') + '</pre>' +
+    '<p>See the console for the full confession.</p></div>';
+  document.title = '500 Internal Browser Error';
+}
+
+main().catch(fail);
+</script>
+</body>
+</html>
