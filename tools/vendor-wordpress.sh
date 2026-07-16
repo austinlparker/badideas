@@ -22,6 +22,8 @@ for base in [root / 'wordpress', root / 'wp-content']:
         if not path.is_file():
             continue
         rel = path.relative_to(root).as_posix()
+        if any(part.startswith('.') for part in PurePosixPath(rel).parts):
+            continue
         virtual_path = PurePosixPath('/') / rel
         paths.append({
             'url': './' + rel,

@@ -55,6 +55,22 @@
   #boot-status { color: #00ff00; }
   #boot-status::before { content: "> "; }
   #boot-note { color: #00ffff; font-size: .85rem; }
+  #fatal-error {
+    width: min(42rem, calc(100% - 3rem));
+    box-sizing: border-box;
+    padding: 2rem;
+    border: 4px ridge #c0c0c0;
+    background: #000;
+    color: #fff;
+    color-scheme: dark;
+    box-shadow: 12px 12px 0 #000040;
+  }
+  #fatal-error h1 { margin-top: 0; color: #ffff00; }
+  #fatal-error pre {
+    color: #fff;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
   noscript { color: #fff; }
   input { background: #fff; color: #000; }
 </style>
@@ -125,7 +141,31 @@ async function ensureCrossOriginIsolation() {
   await new Promise(() => {});
 }
 
-async function preloadPhpFiles(fs, files, concurrency = 12) {
+async function fetchPhpFile(url, attempts = 5) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    let response;
+    try {
+      response = await fetch(url);
+    } catch (error) {
+      lastError = error;
+    }
+    if (response) {
+      if (response.ok) return response;
+      lastError = new Error(`${url}: HTTP ${response.status}`);
+      if (![408, 429, 500, 502, 503, 504].includes(response.status)) throw lastError;
+    }
+
+    if (attempt < attempts) {
+      const delay = 250 * (2 ** (attempt - 1));
+      say(`${url} failed (${lastError.message}); retrying in ${delay}ms`);
+      await sleep(delay);
+    }
+  }
+  throw lastError;
+}
+
+async function preloadPhpFiles(fs, files, concurrency = 8) {
   const directories = new Set(files.map(file => file.parent));
   for (const directory of directories) {
     let current = '';
@@ -141,8 +181,7 @@ async function preloadPhpFiles(fs, files, concurrency = 12) {
   const worker = async () => {
     while (cursor < files.length) {
       const file = files[cursor++];
-      const response = await fetch(file.url);
-      if (!response.ok) throw new Error(`${file.url}: HTTP ${response.status}`);
+      const response = await fetchPhpFile(file.url);
       const target = file.parent === '/' ? `/${file.name}` : `${file.parent}/${file.name}`;
       fs.writeFile(target, new Uint8Array(await response.arrayBuffer()));
       completed++;
@@ -312,10 +351,10 @@ function wireWordPressForms() {
 function fail(err) {
   console.error(err);
   document.body.innerHTML =
-    '<div style="font-family:monospace;padding:2em"><h1>500 Internal Browser Error</h1>' +
+    '<main id="fatal-error" role="alert"><h1>500 Internal Browser Error</h1>' +
     '<p>The website that runs entirely in your browser has crashed, entirely in your browser.</p>' +
     '<pre>' + String(err && err.message || err).replace(/</g, '&lt;') + '</pre>' +
-    '<p>See the console for the full confession.</p></div>';
+    '<p>See the console for the full confession.</p></main>';
   document.title = '500 Internal Browser Error';
 }
 
