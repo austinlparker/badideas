@@ -13,12 +13,18 @@ const mysql = await createMysqlModule({
   print: message => console.log('[mysql stdout]', message),
   printErr: message => console.error('[mysql stderr]', message),
 });
-const init = mysql.cwrap('mysql_wasm_init', 'string', []);
+const state = mysql.cwrap('mysql_wasm_state', 'number', []);
+const initError = mysql.cwrap('mysql_wasm_error', 'string', []);
 const query = mysql.cwrap('mysql_wasm_query', 'string', ['string']);
 const shutdown = mysql.cwrap('mysql_wasm_shutdown', null, []);
 
-const initResult = init();
-assert.equal(initResult, '', `MySQL initialization failed: ${initResult}`);
+const initDeadline = Date.now() + 300_000;
+let initState = state();
+while ((initState === 0 || initState === 1) && Date.now() < initDeadline) {
+  await new Promise(resolve => setTimeout(resolve, 50));
+  initState = state();
+}
+assert.equal(initState, 2, `MySQL initialization failed: ${initError() || `state ${initState}`}`);
 
 const run = sql => {
   const result = JSON.parse(query(sql));

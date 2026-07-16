@@ -1,5 +1,6 @@
 #include <mysql.h>
 
+#include <atomic>
 #include <cerrno>
 #include <cstddef>
 #include <cstdint>
@@ -19,6 +20,18 @@ namespace {
 
 MYSQL *connection = nullptr;
 std::string response;
+std::string library_error;
+
+enum LibraryState
+{
+  LIBRARY_NOT_STARTED,
+  LIBRARY_STARTING,
+  LIBRARY_READY,
+  LIBRARY_FAILED
+};
+
+std::atomic<int> library_state(LIBRARY_NOT_STARTED);
+const char pending_json[] = "{\"pending\":true}";
 
 void append_json_string(std::string &out, const char *value, std::size_t length)
 {
@@ -86,26 +99,8 @@ std::string read_file(const char *path)
   return contents;
 }
 
-}  // namespace
-
-extern "C" {
-
-WASM_EXPORT const char *mysql_wasm_init()
+bool initialize_mysql()
 {
-  if (connection != nullptr)
-    return "";
-
-  response.clear();
-  make_directory("/mysql");
-  make_directory("/mysql/data");
-  make_directory("/mysql/data/mysql");
-  make_directory("/mysql/tmp");
-  if (!response.empty())
-  {
-    const std::string directory_error = response;
-    return error_json(directory_error.c_str());
-  }
-
   // MySQL's option parser mutates argv, so these must be writable arrays.
   static char arg0[] = "mysql-wasm";
   static char basedir[] = "--basedir=/mysql";
@@ -136,28 +131,81 @@ WASM_EXPORT const char *mysql_wasm_init()
     static_cast<int>(sizeof(server_options) / sizeof(server_options[0])) - 1;
   if (mysql_library_init(option_count, server_options, server_groups) != 0)
   {
-    std::string message = "mysql_library_init failed";
+    library_error = "mysql_library_init failed";
     const std::string log = read_file("/mysql/error.log");
     if (!log.empty())
     {
-      message += ": ";
-      message += log;
+      library_error += ": ";
+      library_error += log;
     }
-    return error_json(message.c_str());
+    library_state.store(LIBRARY_FAILED, std::memory_order_release);
+    return false;
   }
 
   connection = mysql_init(nullptr);
   if (connection == nullptr)
-    return error_json("mysql_init failed");
+  {
+    library_error = "mysql_init failed";
+    library_state.store(LIBRARY_FAILED, std::memory_order_release);
+    return false;
+  }
 
   mysql_options(connection, MYSQL_OPT_USE_EMBEDDED_CONNECTION, nullptr);
   if (mysql_real_connect(connection, nullptr, "root", "", nullptr, 0, nullptr, 0) == nullptr)
   {
-    const std::string connection_error = mysql_error(connection);
+    library_error = mysql_error(connection);
     mysql_close(connection);
     connection = nullptr;
-    return error_json(connection_error.c_str());
+    library_state.store(LIBRARY_FAILED, std::memory_order_release);
+    return false;
   }
+
+  library_state.store(LIBRARY_READY, std::memory_order_release);
+  return true;
+}
+
+}  // namespace
+
+int main()
+{
+  library_state.store(LIBRARY_STARTING, std::memory_order_release);
+
+  response.clear();
+  make_directory("/mysql");
+  make_directory("/mysql/data");
+  make_directory("/mysql/data/mysql");
+  make_directory("/mysql/tmp");
+  if (!response.empty())
+  {
+    library_error = response;
+    library_state.store(LIBRARY_FAILED, std::memory_order_release);
+    return 1;
+  }
+
+  return initialize_mysql() ? 0 : 1;
+}
+
+extern "C" {
+
+WASM_EXPORT int mysql_wasm_state()
+{
+  return library_state.load(std::memory_order_acquire);
+}
+
+WASM_EXPORT const char *mysql_wasm_error()
+{
+  if (library_state.load(std::memory_order_acquire) != LIBRARY_FAILED)
+    return "";
+  return error_json(library_error.c_str());
+}
+
+WASM_EXPORT const char *mysql_wasm_init()
+{
+  const int state = library_state.load(std::memory_order_acquire);
+  if (state == LIBRARY_NOT_STARTED || state == LIBRARY_STARTING)
+    return pending_json;
+  if (state == LIBRARY_FAILED)
+    return error_json(library_error.c_str());
 
   return "";
 }

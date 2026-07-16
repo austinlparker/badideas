@@ -92,19 +92,19 @@ em++ /project/mysql_wasm.cc \
   -pthread \
   -std=gnu++11 \
   -Os \
-  --no-entry \
   --embed-file /mysql-src/sql/share/charsets@/mysql/share/charsets \
   --embed-file /build/mysql-wasm/sql/share/english/errmsg.sys@/mysql/share/english/errmsg.sys \
   -sMODULARIZE=1 \
   -sEXPORT_ES6=1 \
   -sEXPORT_NAME=createMysqlModule \
   -sENVIRONMENT=web,worker \
-  -sEXPORTED_FUNCTIONS=_mysql_wasm_init,_mysql_wasm_query,_mysql_wasm_shutdown \
+  -sEXPORTED_FUNCTIONS=_main,_mysql_wasm_state,_mysql_wasm_error,_mysql_wasm_init,_mysql_wasm_query,_mysql_wasm_shutdown \
   -sEXPORTED_RUNTIME_METHODS=cwrap,FS \
   -sALLOW_MEMORY_GROWTH=1 \
   -sINITIAL_MEMORY=268435456 \
   -sMAXIMUM_MEMORY=2147483648 \
   -sPTHREAD_POOL_SIZE=8 \
+  -sPROXY_TO_PTHREAD=1 \
   -sEXIT_RUNTIME=0 \
   -sFILESYSTEM=1 \
   -o /out/mysql.mjs

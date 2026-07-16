@@ -18,13 +18,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .cache/badideas-mysql-wasm
           key: mysql-wasm-${{ runner.os }}-${{ hashFiles('mysql-wasm/**') }}
@@ -40,12 +40,62 @@ jobs:
       - name: Vendor a PHP interpreter for the browser (so is this one)
         run: ./tools/vendor-php-wasm.sh
 
+      - name: Boot MySQL and PHP in a real browser
+        timeout-minutes: 5
+        run: |
+          ./tools/serve.py --port 8000 >"$RUNNER_TEMP/site-server.log" 2>&1 &
+          server_pid=$!
+
+          google-chrome \
+            --headless=new \
+            --disable-dev-shm-usage \
+            --disable-extensions \
+            --disable-gpu \
+            --no-first-run \
+            --remote-debugging-port=9227 \
+            --user-data-dir="$RUNNER_TEMP/badideas-chrome" \
+            'http://127.0.0.1:8000/' \
+            >"$RUNNER_TEMP/chrome.log" 2>&1 &
+          chrome_pid=$!
+
+          # Invoked indirectly by the EXIT trap.
+          # shellcheck disable=SC2329
+          cleanup() {
+            kill "$chrome_pid" "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for _ in {1..180}
+          do
+            title="$(
+              curl --silent http://127.0.0.1:9227/json/list 2>/dev/null \
+                | jq --raw-output \
+                    '.[] | select(.type == "page" and (.url | startswith("http://127.0.0.1:8000/"))) | .title' \
+                2>/dev/null \
+                || true
+            )"
+            if [ "$title" = "austin's BAD IDEAS zone" ]
+            then
+              exit 0
+            fi
+            if ! kill -0 "$chrome_pid" 2>/dev/null
+            then
+              cat "$RUNNER_TEMP/chrome.log"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          cat "$RUNNER_TEMP/site-server.log"
+          cat "$RUNNER_TEMP/chrome.log"
+          exit 1
+
       - name: Inspect the payload we are about to inflict
         run: du -sh site site/* | sort -h
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
@@ -57,4 +107,29 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
+
+      - name: Verify the deployed Pages payload
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          base="${PAGE_URL%/}/"
+          index="$RUNNER_TEMP/pages-index.html"
+
+          curl --fail --silent --show-error \
+            --retry 5 --retry-all-errors --retry-delay 5 \
+            --output "$index" "$base"
+          grep --fixed-strings --quiet 'id="boot-status"' "$index"
+
+          for asset in \
+            coi-serviceworker.js \
+            dump.sql \
+            index.php \
+            mysql-wasm/mysql.mjs \
+            mysql-wasm/mysql.wasm \
+            php-wasm/PhpWeb.mjs
+          do
+            curl --fail --silent --show-error \
+              --retry 5 --retry-all-errors --retry-delay 5 \
+              --output /dev/null "${base}${asset}"
+          done

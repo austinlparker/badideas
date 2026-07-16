@@ -16,25 +16,73 @@
     8. execute it, letting PHP query MySQL over a JavaScript bridge
     9. finally, paint
 
-  Nothing is parallelized. Nothing is streamed. Nothing is cached beyond what
-  GitHub Pages insists on. Progress is reported to the developer console,
-  where all honest progress lives. The screen stays blank because a loading
-  spinner would imply apology, and we regret nothing.
+  Nothing is streamed. Nothing is cached beyond what GitHub Pages insists on.
+  Progress is reported on the page and in the developer console, where all
+  honest progress eventually ends up.
 
   Time To First Contentful Paint is measured in minutes, as requested.
 -->
 <title>connecting to database...</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💾</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: #000080;
+    color: #fff;
+    font: 16px/1.5 "Courier New", monospace;
+  }
+  #boot {
+    width: min(42rem, calc(100% - 3rem));
+    border: 4px ridge #c0c0c0;
+    background: #000;
+    box-shadow: 12px 12px 0 #000040;
+  }
+  #boot h1 {
+    margin: 0;
+    padding: .35rem .75rem;
+    background: #c0c0c0;
+    color: #000080;
+    font: bold 1rem Verdana, sans-serif;
+  }
+  #boot-copy { padding: 1.25rem; }
+  #boot-status { color: #00ff00; }
+  #boot-status::before { content: "> "; }
+  #boot-note { color: #00ffff; font-size: .85rem; }
+</style>
 </head>
 <body>
+<main id="boot" role="status" aria-live="polite">
+  <h1>connecting to database...</h1>
+  <div id="boot-copy">
+    <div id="boot-status">starting the browser-side server stack...</div>
+    <p id="boot-note">
+      This page boots MySQL and PHP inside your browser before it can paint the
+      site. A cold start can take a few minutes. The first visit also reloads
+      once to enable WebAssembly threads. Keep this tab open; regrettably, it
+      is working.
+    </p>
+  </div>
+</main>
 <noscript>This website requires JavaScript to run PHP. Read that again.</noscript>
 <script type="module">
 const t0 = Date.now();
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const stamp = () => ((Date.now() - t0) / 1000).toFixed(1).padStart(7) + 's';
 const say = msg => console.log(`%c[${stamp()}]%c ${msg}`, 'color:#0f0;background:#000', '');
-const phase = msg => { document.title = msg; say(msg.toUpperCase()); };
+const showStatus = msg => {
+  document.title = msg;
+  const status = document.querySelector('#boot-status');
+  if (status) status.textContent = msg;
+};
+const phase = msg => {
+  showStatus(msg);
+  say(msg.toUpperCase());
+};
 
 window.__elapsedSeconds = () => ((Date.now() - t0) / 1000).toFixed(1);
 
@@ -80,18 +128,35 @@ async function main() {
   say('importing Oracle MySQL 5.7.44\'s embedded server library, compiled from C/C++ with Emscripten');
   const { default: createMysqlModule } = await import('./mysql-wasm/mysql.mjs');
   const mysqlBase = new URL('./mysql-wasm/', location.href);
+  phase('loading the MySQL WebAssembly runtime...');
   mysql = await createMysqlModule({
     locateFile: name => new URL(name, mysqlBase).href,
+    monitorRunDependencies: remaining => {
+      if (remaining) phase(`loading the MySQL runtime (${remaining} dependencies remaining)...`);
+    },
     print: message => console.log('[mysql stdout]', message),
     printErr: message => console.error('[mysql stderr]', message),
   });
 
-  const initMysql = mysql.cwrap('mysql_wasm_init', 'string', []);
+  const mysqlState = mysql.cwrap('mysql_wasm_state', 'number', []);
+  const mysqlError = mysql.cwrap('mysql_wasm_error', 'string', []);
   const queryMysql = mysql.cwrap('mysql_wasm_query', 'string', ['string']);
-  const initResult = initMysql();
-  if (initResult) {
-    let detail = initResult;
-    try { detail = JSON.parse(initResult).error || detail; } catch (_) {}
+  phase('starting the embedded MySQL server on a background thread...');
+  const initStarted = Date.now();
+  let initState = mysqlState();
+  let displayedSecond = -1;
+  while (initState === 0 || initState === 1) {
+    const elapsed = Math.floor((Date.now() - initStarted) / 1000);
+    if (elapsed !== displayedSecond) {
+      displayedSecond = elapsed;
+      showStatus(`starting the embedded MySQL server in the background (${elapsed}s)...`);
+    }
+    await sleep(50);
+    initState = mysqlState();
+  }
+  if (initState !== 2) {
+    let detail = mysqlError() || `unexpected initialization state ${initState}`;
+    try { detail = JSON.parse(detail).error || detail; } catch (_) {}
     throw new Error('MySQL initialization failed: ' + detail);
   }
   globalThis.mysqlQuery = queryMysql;
