@@ -124,6 +124,9 @@ async function main() {
         status: document.querySelector('#boot-status')?.textContent || '',
         hasCommentForm: Boolean(document.querySelector('form[action*="wp-comments-post.php"]')),
         hasRealWordPress: document.body?.innerText.includes('Powered by WordPress') || false,
+        hasPhpWarnings: /(?:Warning|Deprecated):/.test(document.body?.innerText || ''),
+        hasThemeStylesheet: Boolean(document.querySelector('link[href*="wp-content/themes/badideas/style.css"]')),
+        hasThemeStyles: getComputedStyle(document.querySelector('.site-header') || document.body).backgroundColor === 'rgb(33, 117, 155)',
         body: document.body?.innerText.slice(0, 2000) || ''
       }))()`,
       returnByValue: true,
@@ -138,7 +141,10 @@ async function main() {
 
     const rendered = latestSnapshot.title === expectedTitle
       && latestSnapshot.hasCommentForm
-      && latestSnapshot.hasRealWordPress;
+      && latestSnapshot.hasRealWordPress
+      && !latestSnapshot.hasPhpWarnings
+      && latestSnapshot.hasThemeStylesheet
+      && latestSnapshot.hasThemeStyles;
     if (rendered) {
       console.log('[browser] MySQL and PHP rendered real WordPress posts and comments.');
       try {

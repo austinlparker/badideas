@@ -104,6 +104,32 @@ const phase = msg => {
   say(msg.toUpperCase());
 };
 
+function browserServerEnvironmentSource() {
+  const indexUrl = new URL('index.php', location.href);
+  const server = {
+    PHP_SELF: indexUrl.pathname,
+    SCRIPT_NAME: indexUrl.pathname,
+    SCRIPT_FILENAME: '/index.php',
+    REQUEST_URI: location.pathname,
+    REQUEST_METHOD: 'GET',
+    QUERY_STRING: location.search.slice(1),
+    HTTP_HOST: location.host,
+    SERVER_NAME: location.hostname,
+    SERVER_PORT: location.port || (location.protocol === 'https:' ? '443' : '80'),
+    REQUEST_SCHEME: location.protocol.slice(0, -1),
+    HTTPS: location.protocol === 'https:' ? 'on' : 'off',
+    REMOTE_ADDR: '127.0.0.1',
+    HTTP_USER_AGENT: navigator.userAgent,
+  };
+  const phpString = value => `'${String(value)
+    .replaceAll('\\', '\\\\')
+    .replaceAll("'", "\\'")}'`;
+  const assignments = Object.entries(server)
+    .map(([key, value]) => `$_SERVER[${phpString(key)}] = ${phpString(value)};`)
+    .join('\n');
+  return `<?php\n${assignments}\n?>\n`;
+}
+
 window.__elapsedSeconds = () => ((Date.now() - t0) / 1000).toFixed(1);
 
 console.log(`%c
@@ -277,7 +303,7 @@ async function main() {
   say('fetching index.php as plain text, the way no webserver would ever allow');
   const phpResp = await fetch('index.php');
   if (!phpResp.ok) throw new Error(`index.php: HTTP ${phpResp.status}`);
-  phpSource = await phpResp.text();
+  phpSource = browserServerEnvironmentSource() + await phpResp.text();
 
   phase('executing index.php...');
   await renderPhp();

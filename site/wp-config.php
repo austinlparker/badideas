@@ -10,10 +10,15 @@ $table_prefix = 'wp_';
 define('WP_DEBUG', true);
 define('WP_DEBUG_DISPLAY', true);
 define('WP_ENVIRONMENT_TYPE', 'local');
-define('WP_HOME', '.');
-define('WP_SITEURL', './wordpress');
+$browser_scheme = $_SERVER['REQUEST_SCHEME'] ?? 'http';
+$browser_host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$browser_script = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+$browser_base_path = rtrim(str_replace('\\', '/', dirname($browser_script)), '/.');
+$browser_home = $browser_scheme . '://' . $browser_host . $browser_base_path;
+define('WP_HOME', $browser_home);
+define('WP_SITEURL', $browser_home . '/wordpress');
 define('WP_CONTENT_DIR', '/wp-content');
-define('WP_CONTENT_URL', './wp-content');
+define('WP_CONTENT_URL', $browser_home . '/wp-content');
 define('WP_PLUGIN_DIR', WP_CONTENT_DIR . '/plugins');
 define('WP_PLUGIN_URL', WP_CONTENT_URL . '/plugins');
 define('DISABLE_WP_CRON', true);
@@ -31,3 +36,8 @@ if (!defined('ABSPATH')) {
     define('ABSPATH', __DIR__ . '/wordpress/');
 }
 require_once ABSPATH . 'wp-settings.php';
+
+// There is no HTTP response for WordPress to redirect: PHP renders into the
+// current browser document, whose origin and project path already determine
+// the canonical URL.
+remove_action('template_redirect', 'redirect_canonical');
