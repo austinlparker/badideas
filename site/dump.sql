@@ -7,6 +7,7 @@
 
 CREATE DATABASE wordpress;
 USE wordpress;
+SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION';
 
 CREATE TABLE wp_options (option_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, option_name VARCHAR(191) NOT NULL DEFAULT '', option_value LONGTEXT NOT NULL, autoload VARCHAR(20) NOT NULL DEFAULT 'yes', UNIQUE KEY option_name (option_name)) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
 INSERT INTO wp_options (option_name, option_value, autoload) VALUES ('siteurl', './wordpress', 'yes');

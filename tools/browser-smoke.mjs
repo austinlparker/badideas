@@ -27,6 +27,44 @@ async function findPageTarget() {
   throw new Error(`Chrome did not expose ${pageUrl} within ${timeoutMs}ms`);
 }
 
+async function verifyCommentRoundTrip(command) {
+  const comment = `browser smoke comment ${Date.now()}`;
+  const submission = await command('Runtime.evaluate', {
+    expression: `(() => {
+      const form = document.querySelector('form[action*="wp-comments-post.php"]');
+      form.querySelector('[name="author"]').value = 'browser smoke test';
+      form.querySelector('[name="email"]').value = 'browser-smoke@example.invalid';
+      form.querySelector('[name="comment"]').value = ${JSON.stringify(comment)};
+      return window.__submitWordPressComment(form);
+    })()`,
+    returnByValue: true,
+  });
+  if (submission.exceptionDetails) {
+    throw new Error(submission.exceptionDetails.exception?.description || submission.exceptionDetails.text);
+  }
+
+  while (Date.now() < deadline) {
+    const evaluation = await command('Runtime.evaluate', {
+      expression: `(() => ({
+        rendered: document.body?.innerText.includes(${JSON.stringify(comment)}) || false,
+        title: document.title,
+        body: document.body?.innerText.slice(0, 2000) || ''
+      }))()`,
+      returnByValue: true,
+    });
+    if (evaluation.result.value.rendered) {
+      console.log('[browser] WordPress wp_new_comment() wrote to MySQL and re-rendered the comment.');
+      return;
+    }
+    if (evaluation.result.value.title === '500 Internal Browser Error') {
+      throw new Error(`Comment submission crashed the page:\n${evaluation.result.value.body}`);
+    }
+    await sleep(250);
+  }
+
+  throw new Error(`WordPress rendered, but the submitted comment did not appear within ${timeoutMs}ms`);
+}
+
 async function main() {
   const target = await findPageTarget();
   const socket = new WebSocket(target.webSocketDebuggerUrl);
@@ -48,6 +86,13 @@ async function main() {
     if (message.method === 'Runtime.exceptionThrown') {
       const details = message.params.exceptionDetails;
       browserErrors.push(details.exception?.description || details.text);
+    }
+    if (message.method === 'Runtime.consoleAPICalled' && message.params.type === 'error') {
+      const rendered = message.params.args
+        .map(arg => arg.value ?? arg.description ?? arg.unserializableValue ?? '')
+        .filter(Boolean)
+        .join(' ');
+      if (rendered) browserErrors.push(rendered);
     }
     if (message.method === 'Log.entryAdded' && message.params.entry.level === 'error') {
       browserErrors.push(message.params.entry.text);
@@ -96,6 +141,12 @@ async function main() {
       && latestSnapshot.hasRealWordPress;
     if (rendered) {
       console.log('[browser] MySQL and PHP rendered real WordPress posts and comments.');
+      try {
+        await verifyCommentRoundTrip(command);
+      } catch (error) {
+        socket.close();
+        throw error;
+      }
       socket.close();
       return;
     }

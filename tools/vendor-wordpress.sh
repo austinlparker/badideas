@@ -14,7 +14,7 @@ mv "$TMP/wordpress" site/wordpress
 
 python3 - <<'PY'
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 root = Path('site')
 paths = []
 for base in [root / 'wordpress', root / 'wp-content']:
@@ -22,9 +22,19 @@ for base in [root / 'wordpress', root / 'wp-content']:
         if not path.is_file():
             continue
         rel = path.relative_to(root).as_posix()
-        paths.append({'url': './' + rel, 'path': '/' + rel})
+        virtual_path = PurePosixPath('/') / rel
+        paths.append({
+            'url': './' + rel,
+            'parent': virtual_path.parent.as_posix(),
+            'name': virtual_path.name,
+        })
 for rel in ['wp-config.php']:
-    paths.append({'url': './' + rel, 'path': '/' + rel})
+    virtual_path = PurePosixPath('/') / rel
+    paths.append({
+        'url': './' + rel,
+        'parent': virtual_path.parent.as_posix(),
+        'name': virtual_path.name,
+    })
 (root / 'wordpress-manifest.json').write_text(json.dumps(paths, separators=(',', ':')))
 print(f'wrote site/wordpress-manifest.json with {len(paths)} files')
 PY

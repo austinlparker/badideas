@@ -125,6 +125,39 @@ async function ensureCrossOriginIsolation() {
   await new Promise(() => {});
 }
 
+async function preloadPhpFiles(fs, files, concurrency = 12) {
+  const directories = new Set(files.map(file => file.parent));
+  for (const directory of directories) {
+    let current = '';
+    for (const segment of directory.split('/')) {
+      if (!segment) continue;
+      current += '/' + segment;
+      if (!fs.analyzePath(current).exists) fs.mkdir(current);
+    }
+  }
+
+  let cursor = 0;
+  let completed = 0;
+  const worker = async () => {
+    while (cursor < files.length) {
+      const file = files[cursor++];
+      const response = await fetch(file.url);
+      if (!response.ok) throw new Error(`${file.url}: HTTP ${response.status}`);
+      const target = file.parent === '/' ? `/${file.name}` : `${file.parent}/${file.name}`;
+      fs.writeFile(target, new Uint8Array(await response.arrayBuffer()));
+      completed++;
+      if (completed % 250 === 0 || completed === files.length) {
+        showStatus(`preloading real WordPress core (${completed}/${files.length})...`);
+      }
+    }
+  };
+
+  await Promise.all(Array.from(
+    { length: Math.min(concurrency, files.length) },
+    () => worker(),
+  ));
+}
+
 async function main() {
   await ensureCrossOriginIsolation();
 
@@ -195,10 +228,11 @@ async function main() {
   const wordpressFiles = await manifestResp.json();
   say(`preloading ${wordpressFiles.length} WordPress files. yes, actual WordPress. no, this is not normal.`);
   const { PhpWeb } = await import('./php-wasm/PhpWeb.mjs');
-  php = new PhpWeb({ files: wordpressFiles });
+  php = new PhpWeb();
   php.addEventListener('output', e => outputChunks.push(...e.detail));
   php.addEventListener('error', e => console.error('[php stderr]', e.detail.join('')));
-  await php.binary;
+  const phpBinary = await php.binary;
+  await preloadPhpFiles(phpBinary.FS, wordpressFiles);
   say('PHP is up. two runtimes and a database are now sharing one browser tab.');
 
   say('fetching index.php as plain text, the way no webserver would ever allow');
@@ -216,6 +250,10 @@ async function main() {
 async function renderPhp() {
   outputChunks.length = 0;
   const exitCode = await php.run(phpSource);
+  await replaceDocumentWithPhpOutput(exitCode);
+}
+
+async function replaceDocumentWithPhpOutput(exitCode) {
   await sleep(100); // let trailing output flush
   if (!outputChunks.length) throw new Error(`PHP produced no output (exit code ${exitCode})`);
   document.body.innerHTML = outputChunks.join('');
@@ -234,18 +272,33 @@ window.__submitWordPressComment = function (form) {
   say('submitting through wp_new_comment(), inside PHP-WASM, against MySQL-WASM...');
   const code = `<?php
 chdir('/wordpress');
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 require_once '/wp-config.php';
-wp_new_comment(array(
+$comment_id = wp_new_comment(array(
   'comment_post_ID' => ${postId},
   'comment_author' => '${author}',
   'comment_author_email' => '${email}',
+  'comment_author_url' => '',
+  'comment_author_IP' => '127.0.0.1',
+  'comment_agent' => 'badideas browser WordPress',
   'comment_content' => '${content}',
   'comment_type' => 'comment',
   'comment_approved' => 1,
-));
+), true);
+if (is_wp_error($comment_id) && 'comment_duplicate' !== $comment_id->get_error_code()) {
+  throw new RuntimeException($comment_id->get_error_message());
+}
 ?>`;
   outputChunks.length = 0;
-  php.run(code).then(() => renderPhp()).catch(fail);
+  (async () => {
+    await php.run(code);
+    // php-wasm keeps one PHP process alive across run() calls. Refresh it so
+    // WordPress' front-controller guards and request globals start clean while
+    // the in-memory MySQL database (including the new comment) stays put.
+    await sleep(250);
+    await php.refresh();
+    await renderPhp();
+  })().catch(fail);
   return false;
 };
 

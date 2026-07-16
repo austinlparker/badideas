@@ -113,6 +113,11 @@ OpenSSL license files next to the WebAssembly module. MySQL 5.7 Community
 Server is GPLv2; see those files and the upstream source distributions for the
 full terms.
 
+MySQL 5.7 is intentional rather than an old version pin waiting for a routine
+upgrade: MySQL 8.0 removed the `libmysqld` embedded server library used by this
+project. Moving to MySQL 8 would require porting its standalone server and a
+transport into the browser instead of simply changing `MYSQL_VERSION`.
+
 ### Deploying
 
 Enable GitHub Pages with **Settings → Pages → Source: GitHub Actions**. A push

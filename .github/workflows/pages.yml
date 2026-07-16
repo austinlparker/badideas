@@ -3,6 +3,8 @@ name: Deploy the monument to GitHub Pages
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +13,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -91,12 +93,15 @@ jobs:
         run: du -sh site site/* | sort -h
 
       - uses: actions/configure-pages@v6
+        if: github.event_name != 'pull_request'
 
       - uses: actions/upload-pages-artifact@v5
+        if: github.event_name != 'pull_request'
         with:
           path: site
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -124,10 +129,11 @@ jobs:
             index.php \
             mysql-wasm/mysql.mjs \
             mysql-wasm/mysql.wasm \
-            php-wasm/PhpWeb.mjs
-            wordpress/index.php
-            wordpress/wp-settings.php
-            wp-content/db.php
+            php-wasm/PhpWeb.mjs \
+            wordpress-manifest.json \
+            wordpress/index.php \
+            wordpress/wp-settings.php \
+            wp-content/db.php \
             wp-content/themes/badideas/index.php
           do
             curl --fail --silent --show-error \

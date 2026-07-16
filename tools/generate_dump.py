@@ -85,6 +85,10 @@ def main() -> None:
     w("")
     w("CREATE DATABASE wordpress;")
     w("USE wordpress;")
+    # WordPress core still uses zero DATETIME defaults in its canonical schema.
+    # MySQL 5.7's default strict modes reject those defaults before WordPress has
+    # booted far enough to normalize the session mode itself.
+    w("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION';")
     w("")
     w("CREATE TABLE wp_options (option_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, option_name VARCHAR(191) NOT NULL DEFAULT '', option_value LONGTEXT NOT NULL, autoload VARCHAR(20) NOT NULL DEFAULT 'yes', UNIQUE KEY option_name (option_name)) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;")
     options = {
