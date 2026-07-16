@@ -24,7 +24,8 @@ jobs:
         with:
           node-version: '22'
 
-      - uses: actions/cache@v6
+      - id: mysql-cache
+        uses: actions/cache/restore@v6
         with:
           path: .cache/badideas-mysql-wasm
           key: mysql-wasm-${{ runner.os }}-${{ hashFiles('mysql-wasm/**') }}
@@ -36,6 +37,13 @@ jobs:
 
       - name: Compile Oracle MySQL 5.7's embedded server for the browser
         run: ./mysql-wasm/build.sh
+
+      - name: Save the MySQL build cache before browser testing
+        if: steps.mysql-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .cache/badideas-mysql-wasm
+          key: mysql-wasm-${{ runner.os }}-${{ hashFiles('mysql-wasm/**') }}
 
       - name: Vendor a PHP interpreter for the browser (so is this one)
         run: ./tools/vendor-php-wasm.sh
@@ -65,30 +73,16 @@ jobs:
           }
           trap cleanup EXIT
 
-          for _ in {1..180}
-          do
-            title="$(
-              curl --silent http://127.0.0.1:9227/json/list 2>/dev/null \
-                | jq --raw-output \
-                    '.[] | select(.type == "page" and (.url | startswith("http://127.0.0.1:8000/"))) | .title' \
-                2>/dev/null \
-                || true
-            )"
-            if [ "$title" = "austin's BAD IDEAS zone" ]
-            then
-              exit 0
-            fi
-            if ! kill -0 "$chrome_pid" 2>/dev/null
-            then
-              cat "$RUNNER_TEMP/chrome.log"
-              exit 1
-            fi
-            sleep 1
-          done
-
-          cat "$RUNNER_TEMP/site-server.log"
-          cat "$RUNNER_TEMP/chrome.log"
-          exit 1
+          if ! node tools/browser-smoke.mjs \
+            http://127.0.0.1:9227 \
+            http://127.0.0.1:8000/ \
+            "austin's BAD IDEAS zone" \
+            180000
+          then
+            cat "$RUNNER_TEMP/site-server.log"
+            cat "$RUNNER_TEMP/chrome.log"
+            exit 1
+          fi
 
       - name: Inspect the payload we are about to inflict
         run: du -sh site site/* | sort -h
