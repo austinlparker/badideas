@@ -46,7 +46,7 @@ if [[ ! -f "$MYSQL_SOURCE/.badideas-patched" ]]; then
   echo "Extracting and patching MySQL ${MYSQL_VERSION}..."
   tar -xzf "$MYSQL_TARBALL" -C "$CACHE/src"
   for patch in "$ROOT"/mysql-wasm/patches/*.patch; do
-    (cd "$MYSQL_SOURCE" && git apply "$patch")
+    git apply --verbose --unsafe-paths --directory="$MYSQL_SOURCE" "$patch"
   done
   touch "$MYSQL_SOURCE/.badideas-patched"
 fi
