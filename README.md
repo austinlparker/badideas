@@ -18,9 +18,9 @@ Yes, with one important noun made explicit:
   [php-wasm](https://github.com/seanmorris/php-wasm).
 - Oracle MySQL 5.7.44's actual C/C++ **embedded server library** (`libmysqld`)
   is compiled with Emscripten and runs in the browser as WebAssembly.
-- The tables are real MyISAM tables stored in Emscripten's in-memory
-  filesystem. `CREATE TABLE`, `INSERT`, `UPDATE`, joins, and `SELECT
-  VERSION()` are handled by MySQL code.
+- The tables are real WordPress-shaped MyISAM tables stored in Emscripten's
+  in-memory filesystem. `CREATE TABLE`, `INSERT`, `UPDATE`, joins, and
+  `SELECT VERSION()` are handled by MySQL code.
 - PHP queries that database synchronously through php-wasm's `vrzno`
   JavaScript bridge.
 
@@ -39,8 +39,9 @@ engine is real MySQL, while the connection is an embedded connection.
    at a time.
 3. It downloads and starts the PHP interpreter.
 4. It fetches `index.php` as plain text and executes it in that interpreter.
-5. PHP performs real queries and a real hit-counter `UPDATE`, then renders the
-   guestbook. Signing it performs a real `INSERT`.
+5. PHP performs real queries against cached `wp_options`, `wp_posts`, and
+   `wp_comments`, then renders a real WordPress theme. Leaving a comment
+   runs WordPress comment code and performs real `INSERT` and `UPDATE` statements.
 6. Everything disappears with the tab because persistence would make this
    dangerously close to a reasonable architecture.
 
@@ -52,11 +53,14 @@ MySQL server engine, and database in their own browser.
 | path | job |
 |---|---|
 | `site/index.html` | boots MySQL, imports the dump, boots PHP, and runs the page |
-| `site/index.php` | the guestbook, executed by PHP in the browser |
-| `site/dump.sql` | generated MySQL dump loaded at startup |
+| `site/index.php` | hands control to official WordPress core, executed by PHP in the browser |
+| `site/wp-config.php` | browser-side WordPress configuration |
+| `site/wp-content/` | the database drop-in and tiny theme used by real WordPress |
+| `site/dump.sql` | generated WordPress-style MySQL dump loaded at startup |
 | `mysql-wasm/` | reproducible MySQL/OpenSSL/Emscripten build and compatibility patches |
 | `tools/generate_dump.py` | regenerates the checked-in dump |
 | `tools/vendor-php-wasm.sh` | vendors the PHP interpreter into `site/` |
+| `tools/vendor-wordpress.sh` | vendors official WordPress core into `site/wordpress/` and writes the preload manifest |
 | `tools/serve.py` | local server with the headers required by Wasm pthreads |
 | `.github/workflows/pages.yml` | builds and deploys the site to GitHub Pages |
 
@@ -69,7 +73,7 @@ Emscripten wrapper exposes `mysql_wasm_query()`, and the loader publishes it as
 ```php
 $window = new Vrzno;
 $res = json_decode($window->mysqlQuery(
-    'SELECT VERSION(), hits FROM hit_counter'
+    "SELECT option_value FROM wp_options WHERE option_name = 'blogname'"
 ), true);
 ```
 
@@ -86,6 +90,7 @@ amount of C/C++, so it is intentionally cached under `.cache/`.
 ```bash
 ./mysql-wasm/build.sh
 ./tools/vendor-php-wasm.sh
+./tools/vendor-wordpress.sh
 ./tools/serve.py
 # open http://127.0.0.1:8000 and go make coffee
 ```
@@ -113,3 +118,12 @@ full terms.
 Enable GitHub Pages with **Settings → Pages → Source: GitHub Actions**. A push
 to `main` rebuilds the pinned MySQL module, vendors PHP, verifies the dump, and
 deploys `site/`.
+
+
+### Actual WordPress, regrettably
+
+The next bad idea is now present: the build vendors official WordPress 6.8.3 core into `site/wordpress/`, preloads those files into PHP-WASM's virtual filesystem, and then executes WordPress' own `index.php` in the browser. The database still starts from the cached MySQL dump, now with the usual `wp_*` tables that WordPress expects.
+
+Because php-wasm does not provide a native `mysqli` socket to an in-browser embedded MySQL server, `site/wp-content/db.php` is a normal WordPress database drop-in. WordPress core loads it via the standard `WP_CONTENT_DIR/db.php` hook, and the drop-in adapts the real `wpdb` API to the existing synchronous `mysql_wasm_query()` bridge.
+
+All state still starts from `site/dump.sql`. A comment submission goes through WordPress' `wp_new_comment()` API, writes to the in-memory `wp_comments` table, and bumps `wp_posts.comment_count`; reload the tab and the cached dump returns, pristine and judgmental.

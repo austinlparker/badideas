@@ -48,6 +48,9 @@ jobs:
       - name: Vendor a PHP interpreter for the browser (so is this one)
         run: ./tools/vendor-php-wasm.sh
 
+      - name: Vendor actual WordPress core for the browser
+        run: ./tools/vendor-wordpress.sh
+
       - name: Boot MySQL and PHP in a real browser
         timeout-minutes: 5
         run: |
@@ -76,7 +79,7 @@ jobs:
           if ! node tools/browser-smoke.mjs \
             http://127.0.0.1:9227 \
             http://127.0.0.1:8000/ \
-            "austin's BAD IDEAS zone" \
+            "Austin's Real Browser WordPress" \
             180000
           then
             cat "$RUNNER_TEMP/site-server.log"
@@ -122,6 +125,10 @@ jobs:
             mysql-wasm/mysql.mjs \
             mysql-wasm/mysql.wasm \
             php-wasm/PhpWeb.mjs
+            wordpress/index.php
+            wordpress/wp-settings.php
+            wp-content/db.php
+            wp-content/themes/badideas/index.php
           do
             curl --fail --silent --show-error \
               --retry 5 --retry-all-errors --retry-delay 5 \

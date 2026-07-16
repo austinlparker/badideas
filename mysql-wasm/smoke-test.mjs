@@ -45,20 +45,23 @@ for (const statement of statements) run(statement);
 const version = run('SELECT VERSION()').rows[0][0];
 assert.match(version, /^5\.7\.44/);
 
-const before = Number(run('SELECT hits FROM hit_counter WHERE id = 1').rows[0][0]);
-run('UPDATE hit_counter SET hits = hits + 1 WHERE id = 1');
-const after = Number(run('SELECT hits FROM hit_counter WHERE id = 1').rows[0][0]);
-assert.equal(after, before + 1);
+const blogName = run("SELECT option_value FROM wp_options WHERE option_name = 'blogname'").rows[0][0];
+assert.equal(blogName, "Austin's Real Browser WordPress");
 
-run("INSERT INTO guestbook (name, message, created_at) VALUES ('smoke test', 'real MySQL write', NOW())");
-const inserted = Number(run("SELECT COUNT(*) FROM guestbook WHERE name = 'smoke test'").rows[0][0]);
+const before = Number(run("SELECT comment_count FROM wp_posts WHERE ID = 1").rows[0][0]);
+run("INSERT INTO wp_comments (comment_post_ID, comment_author, comment_date, comment_date_gmt, comment_content, comment_approved, comment_agent) VALUES (1, 'smoke test', NOW(), NOW(), 'real MySQL write', '1', 'WordPress/6.8.3; MySQL-WASM')");
+run('UPDATE wp_posts SET comment_count = comment_count + 1 WHERE ID = 1');
+const after = Number(run("SELECT comment_count FROM wp_posts WHERE ID = 1").rows[0][0]);
+assert.equal(after, before + 1);
+const inserted = Number(run("SELECT COUNT(*) FROM wp_comments WHERE comment_author = 'smoke test'").rows[0][0]);
 assert.equal(inserted, 1);
 
 console.log(JSON.stringify({
   version,
   statements: statements.length,
-  hitCounter: { before, after },
-  insertedGuestbookRows: inserted,
+  blogName,
+  commentCount: { before, after },
+  insertedCommentRows: inserted,
 }));
 
 shutdown();
