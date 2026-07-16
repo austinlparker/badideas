@@ -1,7 +1,7 @@
 const [
   debugUrl = 'http://127.0.0.1:9227',
   pageUrl = 'http://127.0.0.1:8000/',
-  expectedTitle = "austin's BAD IDEAS zone",
+  expectedTitle = "Austin's Real Browser WordPress",
   timeoutArg = '180000',
 ] = process.argv.slice(2);
 
@@ -77,8 +77,8 @@ async function main() {
       expression: `(() => ({
         title: document.title,
         status: document.querySelector('#boot-status')?.textContent || '',
-        hasGuestbook: Boolean(document.querySelector('form[onsubmit*="__signGuestbook"]')),
-        hasVisitorCounter: document.body?.innerText.includes('You are visitor number') || false,
+        hasCommentForm: Boolean(document.querySelector('form[action*="wp-comments-post.php"]')),
+        hasRealWordPress: document.body?.innerText.includes('Powered by WordPress') || false,
         body: document.body?.innerText.slice(0, 2000) || ''
       }))()`,
       returnByValue: true,
@@ -92,10 +92,10 @@ async function main() {
     }
 
     const rendered = latestSnapshot.title === expectedTitle
-      && latestSnapshot.hasGuestbook
-      && latestSnapshot.hasVisitorCounter;
+      && latestSnapshot.hasCommentForm
+      && latestSnapshot.hasRealWordPress;
     if (rendered) {
-      console.log('[browser] MySQL and PHP rendered the guestbook and visitor counter.');
+      console.log('[browser] MySQL and PHP rendered real WordPress posts and comments.');
       socket.close();
       return;
     }

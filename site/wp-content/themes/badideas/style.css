@@ -1,0 +1,9 @@
+/*
+Theme Name: Bad Ideas Browser WordPress
+Theme URI: https://example.invalid/browser-wordpress
+Author: badideas
+Description: A tiny classic theme for real WordPress running inside a browser tab.
+Version: 0.1.0
+Requires at least: 6.8
+*/
+body{margin:0;background:#e6e6fa;color:#111;font:15px/1.5 Georgia,serif}.wrap{width:min(900px,calc(100% - 2rem));margin:1rem auto;border:4px ridge #aaa;background:#fff;box-shadow:10px 10px 0 #669}.site-header{padding:1rem;background:#21759b;color:#fff;font-family:Verdana,sans-serif}.site-header h1{margin:0;font-size:2rem}.site-header p{margin:.25rem 0 0;color:#d9edf7}.notice{padding:.75rem 1rem;background:#fff8c5;border-bottom:1px solid #e5d36a;font-family:"Courier New",monospace}.content{display:grid;grid-template-columns:1fr 270px;gap:1rem;padding:1rem}.post{margin:0 0 1rem;padding-bottom:1rem;border-bottom:1px dotted #999}.post h2{margin:.2rem 0;color:#21759b;font-family:Verdana,sans-serif}.meta,.footer{color:#666;font-size:.85rem}.sidebar{background:#f1f1f1;padding:1rem;border-left:1px solid #ccc}.comment{margin:.5rem 0;padding:.5rem;background:#fff;border:1px solid #ddd}input,textarea{max-width:100%}@media(max-width:760px){.content{grid-template-columns:1fr}.sidebar{border-left:0}}

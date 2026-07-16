@@ -189,8 +189,13 @@ async function main() {
 
   phase('booting PHP interpreter...');
   say('importing php-wasm (a PHP interpreter, for your browser, which already had JavaScript)');
+  phase('preloading real WordPress core into PHP-WASM FS...');
+  const manifestResp = await fetch('wordpress-manifest.json');
+  if (!manifestResp.ok) throw new Error(`wordpress-manifest.json: HTTP ${manifestResp.status}`);
+  const wordpressFiles = await manifestResp.json();
+  say(`preloading ${wordpressFiles.length} WordPress files. yes, actual WordPress. no, this is not normal.`);
   const { PhpWeb } = await import('./php-wasm/PhpWeb.mjs');
-  php = new PhpWeb();
+  php = new PhpWeb({ files: wordpressFiles });
   php.addEventListener('output', e => outputChunks.push(...e.detail));
   php.addEventListener('error', e => console.error('[php stderr]', e.detail.join('')));
   await php.binary;
@@ -203,9 +208,9 @@ async function main() {
 
   phase('executing index.php...');
   await renderPhp();
-  document.title = "austin's BAD IDEAS zone";
+  document.title = "Austin's Real Browser WordPress";
   phase(`first contentful paint at ${stamp().trim()} — a new record (either direction)`);
-  document.title = "austin's BAD IDEAS zone";
+  document.title = "Austin's Real Browser WordPress";
 }
 
 async function renderPhp() {
@@ -214,23 +219,42 @@ async function renderPhp() {
   await sleep(100); // let trailing output flush
   if (!outputChunks.length) throw new Error(`PHP produced no output (exit code ${exitCode})`);
   document.body.innerHTML = outputChunks.join('');
+  wireWordPressForms();
 }
 
-// The guestbook form re-runs the entire PHP script. Server-side rendering,
-// client-side, on demand.
-window.__signGuestbook = function (form) {
-  const esc = s => s.replace(/\\/g, '\\\\').replace(/'/g, "''").replace(/[\r\n;]/g, ' ');
-  const name = esc(form.name.value.trim() || 'anonymous coward');
-  const message = esc(form.message.value.trim());
-  if (!message) { alert('a guestbook entry with no message is just a hit counter'); return false; }
-  const res = JSON.parse(globalThis.mysqlQuery(
-    `INSERT INTO guestbook (name, message, created_at) VALUES ('${name}', '${message}', NOW())`
-  ));
-  if (res.error) { alert('MySQL error: ' + res.error); return false; }
-  say('guestbook INSERT committed to a database inside your browser. re-running PHP...');
-  renderPhp().catch(fail);
+// The WordPress comment form submits through actual WordPress APIs, then re-runs
+// the front controller. Server-side rendering, client-side, on demand.
+window.__submitWordPressComment = function (form) {
+  const esc = s => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\r\n;]/g, ' ');
+  const author = esc((form.author?.value || '').trim() || 'anonymous coward');
+  const email = esc((form.email?.value || '').trim() || 'nobody@example.invalid');
+  const content = esc((form.comment?.value || '').trim());
+  const postId = Number(form.comment_post_ID?.value || 1);
+  if (!content) { alert('WordPress declined to publish an empty comment. rude but fair.'); return false; }
+  say('submitting through wp_new_comment(), inside PHP-WASM, against MySQL-WASM...');
+  const code = `<?php
+chdir('/wordpress');
+require_once '/wp-config.php';
+wp_new_comment(array(
+  'comment_post_ID' => ${postId},
+  'comment_author' => '${author}',
+  'comment_author_email' => '${email}',
+  'comment_content' => '${content}',
+  'comment_type' => 'comment',
+  'comment_approved' => 1,
+));
+?>`;
+  outputChunks.length = 0;
+  php.run(code).then(() => renderPhp()).catch(fail);
   return false;
 };
+
+function wireWordPressForms() {
+  document.querySelectorAll('form[action*="wp-comments-post.php"]').forEach(form => {
+    form.onsubmit = () => window.__submitWordPressComment(form);
+  });
+}
+
 
 function fail(err) {
   console.error(err);

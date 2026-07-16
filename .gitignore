@@ -8,3 +8,5 @@ site/php-wasm/
 
 node_modules/
 package-lock.json
+site/wordpress/
+site/wordpress-manifest.json
